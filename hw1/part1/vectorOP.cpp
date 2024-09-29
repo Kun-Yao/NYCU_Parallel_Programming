@@ -49,8 +49,41 @@ void clampedExpVector(float *values, int *exponents, float *output, int N)
   // Your solution should work for any value of
   // N and VECTOR_WIDTH, not just when VECTOR_WIDTH divides N
   //
+  __pp_vec_float x;
+  __pp_vec_int exp;
+  __pp_vec_int zero = _pp_vset_int(0);
+  __pp_vec_int one = _pp_vset_int(1);
+  __pp_vec_float result;
+  __pp_mask maskAll, maskIsPositive;
+
   for (int i = 0; i < N; i += VECTOR_WIDTH)
   {
+    
+    // All ones
+    maskAll = _pp_init_ones();
+
+    // Set result
+    _pp_vset_float(result, 1.f, maskAll);
+
+    // Load vector of values and exponents from contiguous memory addresses
+    _pp_vload_float(x, values + i, maskAll); // x = values[i];
+    _pp_vload_int(exp, exponents + i, maskAll);
+
+    // Set mask according to predicate
+    _pp_vgt_int(maskIsPositive, exp, zero, maskAll);
+
+    while(_pp_cntbits(maskIsPositive) > 0){
+      _pp_vmult_float(result, result, x, maskIsPositive);
+      _pp_vsub_int(exp, exp, one, maskIsPositive);
+      _pp_vgt_int(maskIsPositive, exp, zero, maskAll);
+    }
+    
+    // Write results back to memory
+    _pp_vstore_float(output + i, result, maskAll);
+    
+    //同步處理VECTOR_WIDTH個elements
+
+    //如果剩下的elements不足VECTOR_WIDTH個，i-=(N-VECTOR_WIDTH)並且把倒退的mask設定成false
   }
 }
 
