@@ -53,8 +53,9 @@ void clampedExpVector(float *values, int *exponents, float *output, int N)
   __pp_vec_int exp;
   __pp_vec_int zero = _pp_vset_int(0);
   __pp_vec_int one = _pp_vset_int(1);
+  __pp_vec_float exp_max = _pp_vset_float(float(EXP_MAX));
   __pp_vec_float result;
-  __pp_mask maskAll, maskIsPositive;
+  __pp_mask maskAll, maskIsPositive, maskgtExpMax;
 
   for (int i = 0; i < N; i += VECTOR_WIDTH)
   {
@@ -77,6 +78,10 @@ void clampedExpVector(float *values, int *exponents, float *output, int N)
       _pp_vsub_int(exp, exp, one, maskIsPositive);
       _pp_vgt_int(maskIsPositive, exp, zero, maskAll);
     }
+    
+    // Set to 9.999999 if greater than EXP_MAX
+    _pp_vgt_float(maskgtExpMax, result, exp_max, maskAll);
+    _pp_vset_float(result, 9.999999f, maskAll);
     
     // Write results back to memory
     _pp_vstore_float(output + i, result, maskAll);
