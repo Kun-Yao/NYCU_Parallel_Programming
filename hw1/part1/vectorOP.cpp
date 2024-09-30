@@ -59,19 +59,21 @@ void clampedExpVector(float *values, int *exponents, float *output, int N)
 
   for (int i = 0; i < N; i += VECTOR_WIDTH)
   {
-    if (i + VECTOR_WIDTH > N){
+    if (i + VECTOR_WIDTH > N)
+    {
       // number of remaining elements less than VECTOR_WIDTH, reuse (i + VECTOR_WIDTH + 1) - N elements
       i -= (i + VECTOR_WIDTH + 1) - N;
       maskAll = _pp_init_ones(N - i - 1);
       maskAll = _pp_mask_not(maskAll);
     }
-    else{
+    else
+    {
       // All ones
       maskAll = _pp_init_ones();
     }
 
     maskIsPositive = maskAll;
-    
+
     // Set result
     _pp_vset_float(result, 1.f, maskAll);
 
@@ -82,22 +84,19 @@ void clampedExpVector(float *values, int *exponents, float *output, int N)
     // Set mask according to predicate
     _pp_vgt_int(maskIsPositive, exp, zero, maskAll);
 
-    while(_pp_cntbits(maskIsPositive) > 0){
+    while (_pp_cntbits(maskIsPositive) > 0)
+    {
       _pp_vmult_float(result, result, x, maskIsPositive);
       _pp_vsub_int(exp, exp, one, maskIsPositive);
       _pp_vgt_int(maskIsPositive, exp, zero, maskAll);
     }
-    
+
     // Set to 9.999999 if greater than EXP_MAX
     _pp_vgt_float(maskgtExpMax, result, exp_max, maskAll);
     _pp_vset_float(result, 9.999999f, maskAll);
-    
+
     // Write results back to memory
     _pp_vstore_float(output + i, result, maskAll);
-    
-    //同步處理VECTOR_WIDTH個elements
-
-    //如果剩下的elements不足VECTOR_WIDTH個，i-=(N-VECTOR_WIDTH)並且把倒退的mask設定成false
   }
 }
 
@@ -106,24 +105,33 @@ void clampedExpVector(float *values, int *exponents, float *output, int N)
 // You can assume VECTOR_WIDTH is a power of 2
 float arraySumVector(float *values, int N)
 {
-
+  float output[VECTOR_WIDTH];
   //
   // PP STUDENTS TODO: Implement your vectorized version of arraySumSerial here
   //
   __pp_vec_float x;
-  __pp_vec_float result;
-  __pp_vec_float interleave;
-  __pp_mask even = _pp_init_ones(VECTOR_WIDTH / 2);
-  __pp_mask maskAll;
+  __pp_vec_float result = _pp_vset_float(0.f);
+  __pp_vec_float hadd;
+  __pp_mask maskEven = _pp_init_ones(VECTOR_WIDTH / 2);
+  __pp_mask maskAll = _pp_init_ones();
   for (int i = 0; i < N; i += VECTOR_WIDTH)
   {
-    maskAll = _pp_init_ones();
-
     _pp_vload_float(x, values + i, maskAll);
 
-    _pp_hadd_float(result, x);
-    _pp_interleave_float(interleave, result);
+    _pp_hadd_float(hadd, x);
+
+    _pp_vadd_float(result, result, hadd, maskAll);
   }
 
-  return 0.0;
+  __pp_vec_float inter;
+  int lg = VECTOR_WIDTH / 2;
+  while (lg > 1)
+  {
+    _pp_interleave_float(inter, result);
+    _pp_hadd_float(result, inter);
+    lg /= 2;
+  }
+  __pp_mask maskSave = _pp_init_ones();
+  _pp_vstore_float(output, result, maskSave);
+  return output[0];
 }
