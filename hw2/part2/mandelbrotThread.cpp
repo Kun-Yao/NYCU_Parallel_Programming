@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <thread>
-
+#include <smmintrin.h>
+#include <immintrin.h>
 typedef struct
 {
     float x0, x1;
@@ -35,7 +36,18 @@ void workerThreadStart(WorkerArgs *const args)
     // half of the image and thread 1 could compute the bottom half.
     // Of course, you can copy mandelbrotSerial() to this file and
     // modify it to pursue a better performance.
+    
 
+    // int patch_height = args->height / args->numThreads;
+    // mandelbrotSerial(args->x0, args->y0, args->x1, args->y1, args->width, args->height, (args->threadId * patch_height), patch_height, args->maxIterations, args->output);
+
+    int patch_height = 1;
+    int id = args->threadId;
+    int height = args->height;
+    int threads = args->numThreads;
+    for (int i = id; i < height; i += patch_height * threads){
+        mandelbrotSerial(args->x0, args->y0, args->x1, args->y1, args->width, args->height, patch_height * i, patch_height, args->maxIterations, args->output);
+    }
     printf("Hello world from thread %d\n", args->threadId);
 }
 
